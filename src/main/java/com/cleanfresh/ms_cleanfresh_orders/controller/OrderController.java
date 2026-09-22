@@ -1,10 +1,14 @@
 package com.cleanfresh.ms_cleanfresh_orders.controller;
 
+import com.cleanfresh.ms_cleanfresh_orders.dto.OrderRequest;
 import com.cleanfresh.ms_cleanfresh_orders.dto.OrderResponse;
 import com.cleanfresh.ms_cleanfresh_orders.service.OrderService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,5 +39,10 @@ public class OrderController {
     @GetMapping("/estado/{estado}")
     public List<OrderResponse> getByEstado(@PathVariable String estado) {
         return orderService.findByEstado(estado);
+    }
+
+    @PostMapping
+    public ResponseEntity<OrderResponse> create(@RequestBody OrderRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.create(request));
     }
 }

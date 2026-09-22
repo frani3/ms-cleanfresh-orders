@@ -1,12 +1,8 @@
 package com.cleanfresh.ms_cleanfresh_orders.dto;
 
-public record OrderResponse(
-        Long id,
-        String numeroOrden,
+public record OrderRequest(
         String cliente,
         String servicio,
-        String estado,
-        String fecha,
         Double total,
         String sucursal
 ) {
