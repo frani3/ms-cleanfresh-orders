@@ -3,3 +3,13 @@ server:
 spring:
   application:
     name: ms-cleanfresh-orders
+  # Sin valores por defecto a propósito: la conexión llega solo por
+  # variables de entorno y el servicio no arranca si faltan.
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
