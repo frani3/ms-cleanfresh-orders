@@ -108,3 +108,14 @@ curl -X POST http://localhost:8081/api/orders \
 
 Ver [`CLAUDE.md`](CLAUDE.md) para el detalle completo del sistema (los
 4 repos, cómo se conecta con el BFF, y la pauta de evaluación de EP1).
+
+## Docker
+
+`Dockerfile` multi-etapa (Maven + JDK 21 para compilar, JRE 21 sin root para correr). Se configura solo por variables de entorno.
+
+```bash
+docker build -t cleanfresh/orders .
+docker run -p 8081:8081 -e DB_URL=... -e DB_USER=... -e DB_PASSWORD=... cleanfresh/orders
+```
+
+Los 5 microservicios se levantan juntos con el `docker-compose.yml` de `EP2/despliegue/` en el repo `cleanfresh-frontend`.
