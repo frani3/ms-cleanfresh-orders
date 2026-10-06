@@ -13,3 +13,14 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
+
+# Publicación de ORDEN_CREADA en AWS SQS. Apagada por defecto: sin AWS
+# (desarrollo local) el servicio funciona igual. Las credenciales salen de
+# la cadena por defecto del SDK (variables AWS_*, perfil de la EC2, ...).
+app:
+  sqs:
+    enabled: ${SQS_ENABLED:false}
+    queue-url: ${SQS_QUEUE_URL:}
+    region: ${AWS_REGION:us-east-1}
+    # Solo para emuladores locales (por ejemplo ElasticMQ); vacío en AWS.
+    endpoint: ${SQS_ENDPOINT:}

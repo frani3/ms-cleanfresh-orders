@@ -4,6 +4,8 @@ import com.cleanfresh.ms_cleanfresh_orders.dto.OrderRequest;
 import com.cleanfresh.ms_cleanfresh_orders.dto.OrderResponse;
 import com.cleanfresh.ms_cleanfresh_orders.entity.OrderEntity;
 import com.cleanfresh.ms_cleanfresh_orders.repository.OrderJpaRepository;
+import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,9 +17,11 @@ import java.util.Optional;
 public class OrderService {
 
     private final OrderJpaRepository repository;
+    private final ApplicationEventPublisher events;
 
-    public OrderService(OrderJpaRepository repository) {
+    public OrderService(OrderJpaRepository repository, ApplicationEventPublisher events) {
         this.repository = repository;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +53,10 @@ public class OrderService {
         // El N° de orden se deriva del id que asigna la base; al ser una entidad
         // gestionada, el cambio se guarda solo al cerrar la transacción.
         order.setNumeroOrden(String.format("ORD-%04d", order.getId()));
-        return toResponse(order);
+        OrderResponse response = toResponse(order);
+        // Se avisa a SQS recién cuando la transacción se confirma (ver OrdenCreadaListener).
+        events.publishEvent(new OrdenCreadaEvent(response));
+        return response;
     }
 
     private OrderResponse toResponse(OrderEntity order) {

@@ -1,0 +1,35 @@
+package com.cleanfresh.ms_cleanfresh_orders.messaging;
+
+import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+/**
+ * Publica el evento solo después de que la orden quedó confirmada en la base
+ * (así nunca se avisa de una orden que terminó revirtiéndose). Si la
+ * publicación falla, la orden ya existe: se registra el error y no se propaga.
+ */
+@Component
+public class OrdenCreadaListener {
+
+    private static final Logger log = LoggerFactory.getLogger(OrdenCreadaListener.class);
+
+    private final OrderEventPublisher publisher;
+
+    public OrdenCreadaListener(OrderEventPublisher publisher) {
+        this.publisher = publisher;
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onOrdenCreada(OrdenCreadaEvent event) {
+        try {
+            publisher.publish(event);
+        } catch (RuntimeException e) {
+            log.error("No se pudo publicar ORDEN_CREADA de {} en SQS; la orden ya quedó creada",
+                    event.orden().numeroOrden(), e);
+        }
+    }
+}

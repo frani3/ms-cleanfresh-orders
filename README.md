@@ -40,6 +40,34 @@ faltan, el servicio no arranca.
 
 Las tablas se crean/actualizan solas (`ddl-auto: update`).
 
+## Eventos en SQS (opcional)
+
+Al crear una orden, si SQS está activado, el servicio publica un mensaje
+`ORDEN_CREADA` en la cola con `numeroOrden`, `cliente`, `servicio`, `sucursal`,
+`total` y `fecha`. Se publica **después** de confirmarse la transacción; si la
+publicación falla, la orden queda creada igual y el error se registra en el
+log. Por defecto está apagado y el servicio funciona sin AWS.
+
+| Variable | Descripción |
+|---|---|
+| `SQS_ENABLED` | `true` para publicar (por defecto `false`) |
+| `SQS_QUEUE_URL` | URL de la cola, p. ej. `.../cleanfresh-ordenes` |
+| `AWS_REGION` | Región (por defecto `us-east-1`) |
+| `SQS_ENDPOINT` | Solo para emuladores locales; vacío en AWS |
+
+Las credenciales salen de la cadena por defecto del AWS SDK (variables
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, perfil de la EC2, etc.).
+
+Para probarlo en local sin AWS, con ElasticMQ (emulador de SQS):
+
+```powershell
+docker run -d --name cleanfresh-sqs -p 9324:9324 softwaremill/elasticmq-native
+curl "http://localhost:9324/?Action=CreateQueue&QueueName=cleanfresh-ordenes"
+$env:SQS_ENABLED="true"; $env:SQS_ENDPOINT="http://localhost:9324"
+$env:SQS_QUEUE_URL="http://localhost:9324/000000000000/cleanfresh-ordenes"
+$env:AWS_ACCESS_KEY_ID="local"; $env:AWS_SECRET_ACCESS_KEY="local"
+```
+
 ## Levantar en local
 
 Base de datos de prueba con Docker (credenciales de ejemplo, cámbialas):
