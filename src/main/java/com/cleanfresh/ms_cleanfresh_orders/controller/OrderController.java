@@ -1,5 +1,6 @@
 package com.cleanfresh.ms_cleanfresh_orders.controller;
 
+import com.cleanfresh.ms_cleanfresh_orders.dto.EstadoRequest;
 import com.cleanfresh.ms_cleanfresh_orders.dto.OrderRequest;
 import com.cleanfresh.ms_cleanfresh_orders.dto.OrderResponse;
 import com.cleanfresh.ms_cleanfresh_orders.service.OrderService;
@@ -8,9 +9,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -44,5 +47,17 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderResponse> create(@RequestBody OrderRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(orderService.create(request));
+    }
+
+    @PutMapping("/{numeroOrden}/estado")
+    public ResponseEntity<OrderResponse> cambiarEstado(
+            @PathVariable String numeroOrden, @RequestBody EstadoRequest request) {
+        try {
+            return orderService.cambiarEstado(numeroOrden, request.estado())
+                    .map(ResponseEntity::ok)
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 }

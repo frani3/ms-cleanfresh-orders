@@ -16,6 +16,7 @@ datos viven en PostgreSQL (en EP1 eran listas en memoria).
 | GET | `/api/orders/{id}` | Una orden por id |
 | GET | `/api/orders/estado/{estado}` | Órdenes filtradas por estado |
 | POST | `/api/orders` | Crea una orden nueva (`{ cliente, servicio, total, sucursal }`) |
+| PUT | `/api/orders/{numeroOrden}/estado` | Cambia el estado (`{ "estado": "DESPACHADO" }`). Acepta `CREADO`, `ACEPTADO`, `EN_PREPARACION`, `DESPACHADO`, `ENTREGADO`, `CANCELADO` (en cualquier mayúscula); otro valor responde `400` y una orden inexistente `404` |
 
 Al crear, `numeroOrden` (`ORD-` + id con 4 dígitos), `id`, `fecha` y
 `estado` (`CREADO`) se generan en el servidor y la orden queda guardada en
@@ -42,10 +43,15 @@ Las tablas se crean/actualizan solas (`ddl-auto: update`).
 
 ## Eventos en SQS (opcional)
 
-Al crear una orden, si SQS está activado, el servicio publica un mensaje
-`ORDEN_CREADA` en la cola con `numeroOrden`, `cliente`, `servicio`, `sucursal`,
-`total` y `fecha`. Se publica **después** de confirmarse la transacción; si la
-publicación falla, la orden queda creada igual y el error se registra en el
+Si SQS está activado, el servicio publica en la cola mensajes con `tipo`,
+`numeroOrden`, `cliente`, `servicio`, `sucursal`, `total` y `fecha`:
+
+- `ORDEN_CREADA` al crear una orden.
+- `ORDEN_LISTA` cuando una orden pasa a `DESPACHADO` (solo la primera vez: repetir
+  el mismo estado no vuelve a publicar; los demás estados no publican nada).
+
+Se publica **después** de confirmarse la transacción; si la publicación falla, la
+orden o el cambio de estado quedan guardados igual y el error se registra en el
 log. Por defecto está apagado y el servicio funciona sin AWS.
 
 | Variable | Descripción |

@@ -1,6 +1,7 @@
 package com.cleanfresh.ms_cleanfresh_orders.messaging;
 
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
+import com.cleanfresh.ms_cleanfresh_orders.event.OrdenListaEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,7 +17,12 @@ public class NoopOrderEventPublisher implements OrderEventPublisher {
     private static final Logger log = LoggerFactory.getLogger(NoopOrderEventPublisher.class);
 
     @Override
-    public void publish(OrdenCreadaEvent event) {
+    public void publishCreada(OrdenCreadaEvent event) {
         log.debug("SQS desactivado: no se publica ORDEN_CREADA de {}", event.orden().numeroOrden());
+    }
+
+    @Override
+    public void publishLista(OrdenListaEvent event) {
+        log.debug("SQS desactivado: no se publica ORDEN_LISTA de {}", event.orden().numeroOrden());
     }
 }

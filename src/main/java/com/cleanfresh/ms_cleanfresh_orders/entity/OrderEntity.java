@@ -65,6 +65,10 @@ public class OrderEntity {
         return estado;
     }
 
+    public void setEstado(String estado) {
+        this.estado = estado;
+    }
+
     public LocalDate getFecha() {
         return fecha;
     }

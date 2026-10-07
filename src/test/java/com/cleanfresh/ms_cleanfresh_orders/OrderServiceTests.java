@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
@@ -45,5 +46,33 @@ class OrderServiceTests {
 
         assertTrue(entregadas.stream().allMatch(o -> o.estado().equals("ENTREGADO")));
         assertTrue(entregadas.size() >= 1);
+    }
+
+    @Test
+    void cambiarEstadoLoPersisteYAceptaMinusculas() {
+        OrderResponse creada = orderService.create(
+                new OrderRequest("Cliente Estado", "Planchado", 9500.0, "Providencia"));
+
+        OrderResponse cambiada = orderService.cambiarEstado(creada.numeroOrden(), " en_preparacion ").orElseThrow();
+
+        assertEquals("EN_PREPARACION", cambiada.estado());
+        assertEquals("EN_PREPARACION", orderService.findById(creada.id()).orElseThrow().estado());
+    }
+
+    @Test
+    void cambiarEstadoRechazaUnEstadoInvalido() {
+        OrderResponse creada = orderService.create(
+                new OrderRequest("Cliente Invalido", "Planchado", 9500.0, "Providencia"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> orderService.cambiarEstado(creada.numeroOrden(), "VOLANDO"));
+        assertThrows(IllegalArgumentException.class,
+                () -> orderService.cambiarEstado(creada.numeroOrden(), null));
+        assertEquals("CREADO", orderService.findById(creada.id()).orElseThrow().estado());
+    }
+
+    @Test
+    void cambiarEstadoDeUnaOrdenInexistenteDevuelveVacio() {
+        assertTrue(orderService.cambiarEstado("ORD-9999", "ACEPTADO").isEmpty());
     }
 }
