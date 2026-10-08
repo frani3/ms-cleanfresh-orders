@@ -49,7 +49,7 @@ public class OrderService {
 
     @Transactional
     public OrderResponse create(OrderRequest request) {
-        OrderEntity order = repository.save(new OrderEntity(
+        OrderEntity nueva = new OrderEntity(
                 null,
                 request.cliente(),
                 request.servicio(),
@@ -57,7 +57,11 @@ public class OrderService {
                 LocalDate.now(),
                 request.total(),
                 request.sucursal()
-        ));
+        );
+        // Un nombre en blanco se trata como "sin nombre": la pantalla usa cliente.
+        String nombre = request.clienteNombre() == null ? "" : request.clienteNombre().trim();
+        nueva.setClienteNombre(nombre.isEmpty() ? null : nombre);
+        OrderEntity order = repository.save(nueva);
         // El N° de orden se deriva del id que asigna la base; al ser una entidad
         // gestionada, el cambio se guarda solo al cerrar la transacción.
         order.setNumeroOrden(String.format("ORD-%04d", order.getId()));
@@ -99,7 +103,8 @@ public class OrderService {
                 order.getEstado(),
                 order.getFecha().toString(),
                 order.getTotal(),
-                order.getSucursal()
+                order.getSucursal(),
+                order.getClienteNombre()
         );
     }
 }

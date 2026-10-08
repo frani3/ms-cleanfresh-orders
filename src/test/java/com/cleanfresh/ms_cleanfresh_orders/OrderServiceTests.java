@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -74,5 +75,35 @@ class OrderServiceTests {
     @Test
     void cambiarEstadoDeUnaOrdenInexistenteDevuelveVacio() {
         assertTrue(orderService.cambiarEstado("ORD-9999", "ACEPTADO").isEmpty());
+    }
+
+    @Test
+    void guardaYDevuelveElNombreLegibleDelCliente() {
+        OrderResponse creada = orderService.create(new OrderRequest(
+                "64888468-1021-70ae-1c1b-36e6f67b3175", "Planchado", 9500.0, "Providencia", "  cliente@cleanfresh.com "));
+
+        assertEquals("64888468-1021-70ae-1c1b-36e6f67b3175", creada.cliente());
+        assertEquals("cliente@cleanfresh.com", creada.clienteNombre());
+        OrderResponse leida = orderService.findById(creada.id()).orElseThrow();
+        assertEquals("cliente@cleanfresh.com", leida.clienteNombre());
+        assertEquals("64888468-1021-70ae-1c1b-36e6f67b3175", leida.cliente());
+    }
+
+    @Test
+    void sinNombreOConNombreEnBlancoQuedaNull() {
+        OrderResponse sin = orderService.create(new OrderRequest("Cliente A", "Planchado", 9500.0, "Providencia"));
+        OrderResponse blanco = orderService.create(new OrderRequest("Cliente B", "Planchado", 9500.0, "Providencia", "   "));
+
+        assertNull(sin.clienteNombre());
+        assertNull(blanco.clienteNombre());
+    }
+
+    @Test
+    void lasOrdenesDeEjemploNoTienenNombreLegibleYSeMuestranPorSuCliente() {
+        var primera = orderService.findAll().get(0);
+
+        assertEquals("ORD-0001", primera.numeroOrden());
+        assertNull(primera.clienteNombre());
+        assertTrue(primera.cliente() != null && !primera.cliente().isBlank());
     }
 }

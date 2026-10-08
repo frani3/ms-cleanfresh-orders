@@ -43,6 +43,7 @@ public class SqsOrderEventPublisher implements OrderEventPublisher {
                 tipo,
                 orden.numeroOrden(),
                 orden.cliente(),
+                orden.clienteNombre(),
                 orden.servicio(),
                 orden.sucursal(),
                 orden.total(),

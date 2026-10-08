@@ -88,4 +88,15 @@ class OrderEventTests {
 
         assertEquals("DESPACHADO", orderService.findById(creada.id()).orElseThrow().estado());
     }
+
+    @Test
+    void elEventoDeOrdenCreadaLlevaElNombreLegible() {
+        orderService.create(new OrderRequest("id-cognito-1", "Planchado", 9500.0, "Providencia", "Cliente Demo"));
+
+        ArgumentCaptor<OrdenCreadaEvent> captor = ArgumentCaptor.forClass(OrdenCreadaEvent.class);
+        verify(publisher, org.mockito.Mockito.atLeastOnce()).publishCreada(captor.capture());
+        OrdenCreadaEvent ultimo = captor.getAllValues().get(captor.getAllValues().size() - 1);
+        assertEquals("id-cognito-1", ultimo.orden().cliente());
+        assertEquals("Cliente Demo", ultimo.orden().clienteNombre());
+    }
 }

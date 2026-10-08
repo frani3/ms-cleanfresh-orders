@@ -27,6 +27,10 @@ public class OrderEntity {
     private Double total;
     private String sucursal;
 
+    // Nombre legible del cliente (Spec 032); null en las ordenes anteriores.
+    @Column(name = "cliente_nombre")
+    private String clienteNombre;
+
     protected OrderEntity() {
     }
 
@@ -79,5 +83,13 @@ public class OrderEntity {
 
     public String getSucursal() {
         return sucursal;
+    }
+
+    public String getClienteNombre() {
+        return clienteNombre;
+    }
+
+    public void setClienteNombre(String clienteNombre) {
+        this.clienteNombre = clienteNombre;
     }
 }
