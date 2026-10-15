@@ -8,21 +8,21 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Publicador por defecto (app.sqs.enabled=false): no envía nada.
+ * Publicador por defecto (app.rabbit.enabled=false): no envía nada.
  */
 @Component
-@ConditionalOnProperty(name = "app.sqs.enabled", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.rabbit.enabled", havingValue = "false", matchIfMissing = true)
 public class NoopOrderEventPublisher implements OrderEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(NoopOrderEventPublisher.class);
 
     @Override
     public void publishCreada(OrdenCreadaEvent event) {
-        log.debug("SQS desactivado: no se publica ORDEN_CREADA de {}", event.orden().numeroOrden());
+        log.debug("RabbitMQ desactivado: no se publica ORDEN_CREADA de {}", event.orden().numeroOrden());
     }
 
     @Override
     public void publishLista(OrdenListaEvent event) {
-        log.debug("SQS desactivado: no se publica ORDEN_LISTA de {}", event.orden().numeroOrden());
+        log.debug("RabbitMQ desactivado: no se publica ORDEN_LISTA de {}", event.orden().numeroOrden());
     }
 }

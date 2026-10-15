@@ -42,7 +42,7 @@ class OrderEventTests {
 
     @Test
     void siFallaLaPublicacionLaOrdenSeCreaIgual() {
-        doThrow(new RuntimeException("sqs caido")).when(publisher).publishCreada(any());
+        doThrow(new RuntimeException("rabbitmq caido")).when(publisher).publishCreada(any());
 
         OrderResponse creada = orderService.create(
                 new OrderRequest("Cliente Sin Cola", "Planchado", 15000.0, "Maipu"));
@@ -80,7 +80,7 @@ class OrderEventTests {
 
     @Test
     void siFallaLaPublicacionDeListaElEstadoQuedaGuardado() {
-        doThrow(new RuntimeException("sqs caido")).when(publisher).publishLista(any());
+        doThrow(new RuntimeException("rabbitmq caido")).when(publisher).publishLista(any());
         OrderResponse creada = orderService.create(
                 new OrderRequest("Cliente Lista Sin Cola", "Planchado", 9500.0, "Providencia"));
 

@@ -41,38 +41,34 @@ faltan, el servicio no arranca.
 
 Las tablas se crean/actualizan solas (`ddl-auto: update`).
 
-## Eventos en SQS (opcional)
+## Comandos por RabbitMQ (opcional, Spec 033)
 
-Si SQS está activado, el servicio publica en la cola mensajes con `tipo`,
-`numeroOrden`, `cliente`, `servicio`, `sucursal`, `total` y `fecha`:
+Si RabbitMQ está activado, al crear una orden y al despacharla el servicio publica **comandos**
+en el clúster de RabbitMQ (`EP2/despliegue/mq/` del repo del frontend), dentro de un sobre común
+`{ type, eventId, timestamp, traceId, correlationId, payload }`:
 
-- `ORDEN_CREADA` al crear una orden.
-- `ORDEN_LISTA` cuando una orden pasa a `DESPACHADO` (solo la primera vez: repetir
-  el mismo estado no vuelve a publicar; los demás estados no publican nada).
+| Evento | Comandos (clave de ruteo) |
+|---|---|
+| Orden creada (`ORDEN_CREADA`) | `kitchen.ticket` y `email.send` |
+| Orden pasa a `DESPACHADO` (`ORDEN_LISTA`, solo la primera vez) | `email.send` e `invoice.gen` |
 
-Se publica **después** de confirmarse la transacción; si la publicación falla, la
-orden o el cambio de estado quedan guardados igual y el error se registra en el
-log. Por defecto está apagado y el servicio funciona sin AWS.
+Las órdenes de **Servicio exprés** van por el exchange `cmd.topic` con la variante de la clave
+(`email.send.high`, `kitchen.ticket.thermal`, `invoice.gen.pdf`); las demás por `cmd.direct`.
+Los mensajes son persistentes, se publican con confirmación del broker (*publisher confirms*) y con
+*mandatory*: si ninguna cola los recibe, se trata como error.
+
+Se publica **después** de confirmarse la transacción; si la publicación falla, la orden o el cambio de
+estado quedan guardados igual y el error se registra en el log. Por defecto está apagado y el servicio
+funciona sin RabbitMQ.
 
 | Variable | Descripción |
 |---|---|
-| `SQS_ENABLED` | `true` para publicar (por defecto `false`) |
-| `SQS_QUEUE_URL` | URL de la cola, p. ej. `.../cleanfresh-ordenes` |
-| `AWS_REGION` | Región (por defecto `us-east-1`) |
-| `SQS_ENDPOINT` | Solo para emuladores locales; vacío en AWS |
+| `RABBIT_ENABLED` | `true` para publicar (por defecto `false`) |
+| `RABBITMQ_ADDRESSES` | Nodos del clúster, p. ej. `localhost:5672,localhost:5673` |
+| `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | Credenciales de RabbitMQ |
 
-Las credenciales salen de la cadena por defecto del AWS SDK (variables
-`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, perfil de la EC2, etc.).
-
-Para probarlo en local sin AWS, con ElasticMQ (emulador de SQS):
-
-```powershell
-docker run -d --name cleanfresh-sqs -p 9324:9324 softwaremill/elasticmq-native
-curl "http://localhost:9324/?Action=CreateQueue&QueueName=cleanfresh-ordenes"
-$env:SQS_ENABLED="true"; $env:SQS_ENDPOINT="http://localhost:9324"
-$env:SQS_QUEUE_URL="http://localhost:9324/000000000000/cleanfresh-ordenes"
-$env:AWS_ACCESS_KEY_ID="local"; $env:AWS_SECRET_ACCESS_KEY="local"
-```
+Para probarlo en local, levantar el clúster con `EP2/despliegue/mq/docker-compose.yml` y
+verificar el flujo completo con `EP2/despliegue/mq/verificar-flujo.sh`.
 
 ## Levantar en local
 

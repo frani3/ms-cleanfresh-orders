@@ -66,7 +66,7 @@ public class OrderService {
         // gestionada, el cambio se guarda solo al cerrar la transacción.
         order.setNumeroOrden(String.format("ORD-%04d", order.getId()));
         OrderResponse response = toResponse(order);
-        // Se avisa a SQS recién cuando la transacción se confirma (ver OrdenEventListener).
+        // Se publica en RabbitMQ recién cuando la transacción se confirma (ver OrdenEventListener).
         events.publishEvent(new OrdenCreadaEvent(response));
         return response;
     }

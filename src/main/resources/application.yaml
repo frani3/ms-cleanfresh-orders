@@ -1,6 +1,15 @@
 server:
   port: 8081
 spring:
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    # El broker confirma cada publicación y devuelve los mensajes que no llegaron a ninguna cola.
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
   application:
     name: ms-cleanfresh-orders
   # Sin valores por defecto a propósito: la conexión llega solo por
@@ -14,13 +23,9 @@ spring:
       ddl-auto: update
     open-in-view: false
 
-# Publicación de ORDEN_CREADA en AWS SQS. Apagada por defecto: sin AWS
-# (desarrollo local) el servicio funciona igual. Las credenciales salen de
-# la cadena por defecto del SDK (variables AWS_*, perfil de la EC2, ...).
+# Mensajería de comandos con RabbitMQ (Spec 033): orders publica en los exchanges cmd.direct y
+# cmd.topic. Apagada por defecto: sin RabbitMQ (desarrollo local) el servicio funciona igual.
+# RABBITMQ_ADDRESSES admite varios nodos separados por coma (host1:5672,host2:5673).
 app:
-  sqs:
-    enabled: ${SQS_ENABLED:false}
-    queue-url: ${SQS_QUEUE_URL:}
-    region: ${AWS_REGION:us-east-1}
-    # Solo para emuladores locales (por ejemplo ElasticMQ); vacío en AWS.
-    endpoint: ${SQS_ENDPOINT:}
+  rabbit:
+    enabled: ${RABBIT_ENABLED:false}

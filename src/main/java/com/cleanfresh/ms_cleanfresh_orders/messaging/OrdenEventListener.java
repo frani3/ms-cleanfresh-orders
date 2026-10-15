@@ -29,7 +29,7 @@ public class OrdenEventListener {
         try {
             publisher.publishCreada(event);
         } catch (RuntimeException e) {
-            log.error("No se pudo publicar ORDEN_CREADA de {} en SQS; la orden ya quedó creada",
+            log.error("No se pudo publicar los comandos de ORDEN_CREADA de {} en RabbitMQ; la orden ya quedó creada",
                     event.orden().numeroOrden(), e);
         }
     }
@@ -39,7 +39,7 @@ public class OrdenEventListener {
         try {
             publisher.publishLista(event);
         } catch (RuntimeException e) {
-            log.error("No se pudo publicar ORDEN_LISTA de {} en SQS; el estado ya quedó guardado",
+            log.error("No se pudo publicar los comandos de ORDEN_LISTA de {} en RabbitMQ; el estado ya quedó guardado",
                     event.orden().numeroOrden(), e);
         }
     }
