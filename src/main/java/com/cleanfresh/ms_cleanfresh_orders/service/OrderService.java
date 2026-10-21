@@ -11,6 +11,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -64,6 +65,8 @@ public class OrderService {
         // Un nombre en blanco se trata como "sin nombre": la pantalla usa cliente.
         String nombre = request.clienteNombre() == null ? "" : request.clienteNombre().trim();
         nueva.setClienteNombre(nombre.isEmpty() ? null : nombre);
+        // Microsegundos, que es lo que guarda la base: así la respuesta al crear y las lecturas siguientes coinciden.
+        nueva.setFechaHora(Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         OrderEntity order = repository.save(nueva);
         // El N° de orden se deriva del id que asigna la base; al ser una entidad
         // gestionada, el cambio se guarda solo al cerrar la transacción.
@@ -111,7 +114,8 @@ public class OrderService {
                 order.getFecha().toString(),
                 order.getTotal(),
                 order.getSucursal(),
-                order.getClienteNombre()
+                order.getClienteNombre(),
+                order.getFechaHora() == null ? null : order.getFechaHora().toString()
         );
     }
 }

@@ -106,4 +106,49 @@ class OrderServiceTests {
         assertNull(primera.clienteNombre());
         assertTrue(primera.cliente() != null && !primera.cliente().isBlank());
     }
+
+    // ---------- Spec 036: fecha y hora de creación ----------
+
+    @Autowired
+    private com.cleanfresh.ms_cleanfresh_orders.repository.OrderJpaRepository repository;
+
+    @Test
+    void crearOrdenGuardaElInstanteDeCreacion() {
+        java.time.Instant antes = java.time.Instant.now().minusSeconds(1);
+
+        OrderResponse creada = orderService.create(new OrderRequest("Cliente Hora", "Planchado", 9500.0, "Providencia"));
+
+        java.time.Instant despues = java.time.Instant.now().plusSeconds(1);
+        java.time.Instant guardado = java.time.Instant.parse(creada.fechaHora());
+        assertTrue(!guardado.isBefore(antes) && !guardado.isAfter(despues), creada.fechaHora());
+        // se guardó de verdad: una lectura posterior devuelve el mismo instante
+        assertEquals(creada.fechaHora(), orderService.findById(creada.id()).orElseThrow().fechaHora());
+        // y la fecha de siempre sigue ahí
+        assertEquals(java.time.LocalDate.now().toString(), creada.fecha());
+    }
+
+    @Test
+    void unaOrdenAnteriorSinHoraDevuelveFechaHoraNulaYSigueFuncionando() {
+        var vieja = repository.save(new com.cleanfresh.ms_cleanfresh_orders.entity.OrderEntity(
+                null, "Cliente Antiguo", "Planchado", "ENTREGADO", java.time.LocalDate.of(2026, 9, 1), 9500.0, "Maipú"));
+
+        OrderResponse leida = orderService.findById(vieja.getId()).orElseThrow();
+
+        assertNull(leida.fechaHora());
+        assertEquals("2026-09-01", leida.fecha());
+        assertEquals("ENTREGADO", leida.estado());
+    }
+
+    @Test
+    void lasOrdenesSembradasNoTienenHora() {
+        assertNull(orderService.findAll().get(0).fechaHora());
+    }
+
+    @Test
+    void dosOrdenesSeguidasGuardanInstantesNoDecrecientes() {
+        OrderResponse primera = orderService.create(new OrderRequest("Cliente A", "Planchado", 9500.0, "Providencia"));
+        OrderResponse segunda = orderService.create(new OrderRequest("Cliente B", "Planchado", 9500.0, "Providencia"));
+
+        assertTrue(!java.time.Instant.parse(segunda.fechaHora()).isBefore(java.time.Instant.parse(primera.fechaHora())));
+    }
 }

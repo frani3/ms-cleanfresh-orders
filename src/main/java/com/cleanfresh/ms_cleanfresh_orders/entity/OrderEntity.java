@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -26,6 +27,10 @@ public class OrderEntity {
     private LocalDate fecha;
     private Double total;
     private String sucursal;
+
+    // Instante exacto de creación (Spec 036); null en las órdenes anteriores, que solo guardaron la fecha.
+    @Column(name = "fecha_hora")
+    private Instant fechaHora;
 
     // Nombre legible del cliente (Spec 032); null en las ordenes anteriores.
     @Column(name = "cliente_nombre")
@@ -47,6 +52,14 @@ public class OrderEntity {
 
     public Long getId() {
         return id;
+    }
+
+    public Instant getFechaHora() {
+        return fechaHora;
+    }
+
+    public void setFechaHora(Instant fechaHora) {
+        this.fechaHora = fechaHora;
     }
 
     public String getNumeroOrden() {
