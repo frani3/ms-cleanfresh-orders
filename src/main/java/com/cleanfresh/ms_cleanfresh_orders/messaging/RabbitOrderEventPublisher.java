@@ -33,6 +33,10 @@ import java.util.concurrent.TimeUnit;
  *       Cliente del nuevo estado, que va en {@code payload.estado}).</li>
  * </ul>
  *
+ * Cada mensaje lleva su tipo de notificación como propiedad AMQP {@code type} (ORDEN_CREADA, ORDEN_LISTA u ORDEN_ESTADO) y las
+ * cabeceras {@code destinatario} (SUCURSAL, CLIENTE o TALLER) y {@code estado} de la orden, además del {@code traceId}: así la
+ * consola de RabbitMQ (Get messages → Properties) muestra qué notificación es sin abrir el JSON (Spec 039).
+ *
  * Las órdenes de Servicio exprés van por {@code cmd.topic} con la variante de la clave
  * ({@code email.send.high}, {@code kitchen.ticket.thermal}, {@code invoice.gen.pdf}); las demás, por
  * {@code cmd.direct} con la clave base.
@@ -110,7 +114,10 @@ public class RabbitOrderEventPublisher implements OrderEventPublisher {
                 .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
                 .setMessageId(eventId)
                 .setCorrelationId(orden.numeroOrden())
+                .setType(type)
                 .setHeader("traceId", traceId)
+                .setHeader("destinatario", destinatario(type, claveBase))
+                .setHeader("estado", orden.estado())
                 .build();
 
         CorrelationData confirmacion = new CorrelationData(eventId);
@@ -135,6 +142,18 @@ public class RabbitOrderEventPublisher implements OrderEventPublisher {
         } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
             throw new IllegalStateException("Sin confirmación de RabbitMQ para " + clave + " en " + exchange, e);
         }
+    }
+
+    /**
+     * A quién va el comando, para mostrarlo en la consola de RabbitMQ: el ticket de taller es del TALLER, la boleta del CLIENTE y
+     * el aviso ({@code email.send}) a la SUCURSAL cuando entra el pedido (ORDEN_CREADA) o al CLIENTE por cualquier cambio de su pedido.
+     */
+    public static String destinatario(String type, String claveBase) {
+        return switch (claveBase) {
+            case "kitchen.ticket" -> "TALLER";
+            case "invoice.gen" -> "CLIENTE";
+            default -> "ORDEN_CREADA".equals(type) ? "SUCURSAL" : "CLIENTE";
+        };
     }
 
     // El servicio exprés se identifica por su nombre (sin importar tildes ni mayúsculas).

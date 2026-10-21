@@ -231,4 +231,65 @@ class RabbitOrderEventPublisherTests {
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         verify(rabbit, times(2)).send(anyString(), captor.capture(), any(Message.class), any(CorrelationData.class));
     }
+
+    // ---------- Spec 039: el tipo de notificación se ve en la consola de RabbitMQ ----------
+
+    private String tipo(int i) {
+        return mensajes.get(i).getMessageProperties().getType();
+    }
+
+    private Object cabecera(int i, String nombre) {
+        return mensajes.get(i).getMessageProperties().getHeaders().get(nombre);
+    }
+
+    @Test
+    void alCrearUnaOrdenCadaMensajeLlevaSuTipoYAQuienVa() {
+        publisher.publishCreada(new OrdenCreadaEvent(orden("Planchado")));
+
+        // 0 = ticket de taller, 1 = aviso al Operador de la sucursal
+        assertEquals("ORDEN_CREADA", tipo(0));
+        assertEquals("TALLER", cabecera(0, "destinatario"));
+        assertEquals("ORDEN_CREADA", tipo(1));
+        assertEquals("SUCURSAL", cabecera(1, "destinatario"));
+        assertEquals("CREADO", cabecera(1, "estado"));
+    }
+
+    @Test
+    void alDespacharElAvisoVaAlClienteYLaBoletaTambien() {
+        publisher.publishLista(new OrdenListaEvent(ordenEnEstado("Planchado", "DESPACHADO")));
+
+        assertEquals("ORDEN_LISTA", tipo(0));
+        assertEquals("CLIENTE", cabecera(0, "destinatario"));
+        assertEquals("ORDEN_LISTA", tipo(1));
+        assertEquals("CLIENTE", cabecera(1, "destinatario"));
+        assertEquals("DESPACHADO", cabecera(1, "estado"));
+    }
+
+    @Test
+    void unCambioDeEstadoEsDeTipoOrdenEstadoParaElCliente() {
+        publisher.publishEstado(new OrdenEstadoEvent(ordenEnEstado("Planchado", "EN_PREPARACION")));
+
+        assertEquals("ORDEN_ESTADO", tipo(0));
+        assertEquals("CLIENTE", cabecera(0, "destinatario"));
+        assertEquals("EN_PREPARACION", cabecera(0, "estado"));
+    }
+
+    @Test
+    void elTipoDeLaPropiedadCoincideConElDelCuerpoYConLaCabeceraDeTraza() throws Exception {
+        publisher.publishEstado(new OrdenEstadoEvent(ordenEnEstado("Servicio exprés", "ENTREGADO")));
+
+        // lo que muestra la consola (propiedad type) es lo mismo que dice el JSON, también en la variante exprés
+        assertEquals(cuerpo(0).get("type").asString(), tipo(0));
+        assertEquals(cuerpo(0).get("traceId").asString(), cabecera(0, "traceId"));
+        assertEquals("ORD-0007", mensajes.get(0).getMessageProperties().getCorrelationId());
+    }
+
+    @Test
+    void elDestinatarioSigueLaRegla() {
+        assertEquals("TALLER", RabbitOrderEventPublisher.destinatario("ORDEN_CREADA", "kitchen.ticket"));
+        assertEquals("SUCURSAL", RabbitOrderEventPublisher.destinatario("ORDEN_CREADA", "email.send"));
+        assertEquals("CLIENTE", RabbitOrderEventPublisher.destinatario("ORDEN_LISTA", "email.send"));
+        assertEquals("CLIENTE", RabbitOrderEventPublisher.destinatario("ORDEN_ESTADO", "email.send"));
+        assertEquals("CLIENTE", RabbitOrderEventPublisher.destinatario("ORDEN_LISTA", "invoice.gen"));
+    }
 }
