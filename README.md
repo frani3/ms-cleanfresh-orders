@@ -50,7 +50,11 @@ en el clúster de RabbitMQ (`EP2/despliegue/mq/` del repo del frontend), dentro 
 | Evento | Comandos (clave de ruteo) |
 |---|---|
 | Orden creada (`ORDEN_CREADA`) | `kitchen.ticket` y `email.send` |
-| Orden pasa a `DESPACHADO` (`ORDEN_LISTA`, solo la primera vez) | `email.send` e `invoice.gen` |
+| Orden pasa a `DESPACHADO` (`ORDEN_LISTA`) | `email.send` e `invoice.gen` |
+| Orden pasa a `ACEPTADO`, `EN_PREPARACION`, `ENTREGADO` o `CANCELADO` (`ORDEN_ESTADO`, Spec 035) | `email.send` (aviso al Cliente; el estado va en `payload.estado`) |
+
+Se publica solo cuando el estado **realmente cambia** (repetir el estado actual no avisa de nuevo) y volver a
+`CREADO` no genera aviso. No se restringen los saltos de estado.
 
 Las órdenes de **Servicio exprés** van por el exchange `cmd.topic` con la variante de la clave
 (`email.send.high`, `kitchen.ticket.thermal`, `invoice.gen.pdf`); las demás por `cmd.direct`.
