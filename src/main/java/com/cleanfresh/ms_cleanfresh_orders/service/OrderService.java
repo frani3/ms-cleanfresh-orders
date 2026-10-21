@@ -5,6 +5,7 @@ import com.cleanfresh.ms_cleanfresh_orders.dto.OrderResponse;
 import com.cleanfresh.ms_cleanfresh_orders.entity.OrderEntity;
 import com.cleanfresh.ms_cleanfresh_orders.repository.OrderJpaRepository;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
+import com.cleanfresh.ms_cleanfresh_orders.event.OrdenEstadoEvent;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenListaEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,8 @@ public class OrderService {
 
     // Estado en el que una orden se considera "lista" para avisar al cliente.
     private static final String ESTADO_LISTO = "DESPACHADO";
+    // Estados que le avisan al Cliente con ORDEN_ESTADO (DESPACHADO tiene ORDEN_LISTA).
+    private static final Set<String> ESTADOS_CON_AVISO = Set.of("ACEPTADO", "EN_PREPARACION", "ENTREGADO", "CANCELADO");
 
     private final OrderJpaRepository repository;
     private final ApplicationEventPublisher events;
@@ -73,9 +76,11 @@ public class OrderService {
 
     /**
      * Cambia el estado de la orden. Devuelve vacío si no existe y lanza
-     * IllegalArgumentException si el estado no es uno de ESTADOS_VALIDOS. Al
-     * pasar a DESPACHADO por primera vez publica ORDEN_LISTA (tras confirmarse
-     * la transacción).
+     * IllegalArgumentException si el estado no es uno de ESTADOS_VALIDOS. Cada
+     * cambio real de estado le avisa al Cliente (tras confirmarse la transacción):
+     * al pasar a DESPACHADO publica ORDEN_LISTA (aviso y boleta) y a ACEPTADO,
+     * EN_PREPARACION, ENTREGADO o CANCELADO, ORDEN_ESTADO (Spec 035). Repetir el
+     * estado actual no avisa de nuevo, y volver a CREADO no genera aviso.
      */
     @Transactional
     public Optional<OrderResponse> cambiarEstado(String numeroOrden, String estado) {
@@ -84,11 +89,13 @@ public class OrderService {
             throw new IllegalArgumentException("Estado inválido: " + estado);
         }
         return repository.findByNumeroOrden(numeroOrden).map(order -> {
-            boolean pasaAListo = ESTADO_LISTO.equals(nuevo) && !ESTADO_LISTO.equals(order.getEstado());
+            boolean cambio = !nuevo.equals(order.getEstado());
             order.setEstado(nuevo);
             OrderResponse response = toResponse(order);
-            if (pasaAListo) {
+            if (cambio && ESTADO_LISTO.equals(nuevo)) {
                 events.publishEvent(new OrdenListaEvent(response));
+            } else if (cambio && ESTADOS_CON_AVISO.contains(nuevo)) {
+                events.publishEvent(new OrdenEstadoEvent(response));
             }
             return response;
         });

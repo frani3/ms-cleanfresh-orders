@@ -2,6 +2,7 @@ package com.cleanfresh.ms_cleanfresh_orders.messaging;
 
 import com.cleanfresh.ms_cleanfresh_orders.dto.OrderResponse;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
+import com.cleanfresh.ms_cleanfresh_orders.event.OrdenEstadoEvent;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenListaEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,8 @@ import java.util.concurrent.TimeUnit;
  *   <li>Al crear una orden: {@code kitchen.ticket} (ticket de taller) y {@code email.send} (aviso al
  *       Operador de la sucursal).</li>
  *   <li>Al pasar a DESPACHADO: {@code email.send} (aviso al Cliente) e {@code invoice.gen} (boleta).</li>
+ *   <li>Al pasar a ACEPTADO, EN_PREPARACION, ENTREGADO o CANCELADO (Spec 035): {@code email.send} (aviso al
+ *       Cliente del nuevo estado, que va en {@code payload.estado}).</li>
  * </ul>
  *
  * Las órdenes de Servicio exprés van por {@code cmd.topic} con la variante de la clave
@@ -67,6 +70,11 @@ public class RabbitOrderEventPublisher implements OrderEventPublisher {
         publicar(event.orden(), "ORDEN_LISTA", "email.send", "invoice.gen");
     }
 
+    @Override
+    public void publishEstado(OrdenEstadoEvent event) {
+        publicar(event.orden(), "ORDEN_ESTADO", "email.send");
+    }
+
     // Se intentan todos los comandos aunque uno falle (son independientes) y al final se avisa del error.
     private void publicar(OrderResponse orden, String type, String... clavesBase) {
         String traceId = UUID.randomUUID().toString();
@@ -94,7 +102,7 @@ public class RabbitOrderEventPublisher implements OrderEventPublisher {
         String eventId = UUID.randomUUID().toString();
         Envelope envelope = new Envelope(type, eventId, Instant.now().toString(), traceId, orden.numeroOrden(),
                 new Envelope.OrdenPayload(orden.numeroOrden(), orden.cliente(), orden.clienteNombre(),
-                        orden.servicio(), orden.sucursal(), orden.total(), orden.fecha()));
+                        orden.servicio(), orden.sucursal(), orden.total(), orden.fecha(), orden.estado()));
         Message message = MessageBuilder
                 .withBody(MAPPER.writeValueAsString(envelope).getBytes(StandardCharsets.UTF_8))
                 .setContentType("application/json")

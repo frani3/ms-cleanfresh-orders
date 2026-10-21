@@ -1,6 +1,7 @@
 package com.cleanfresh.ms_cleanfresh_orders.messaging;
 
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
+import com.cleanfresh.ms_cleanfresh_orders.event.OrdenEstadoEvent;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenListaEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +42,16 @@ public class OrdenEventListener {
         } catch (RuntimeException e) {
             log.error("No se pudo publicar los comandos de ORDEN_LISTA de {} en RabbitMQ; el estado ya quedó guardado",
                     event.orden().numeroOrden(), e);
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onOrdenEstado(OrdenEstadoEvent event) {
+        try {
+            publisher.publishEstado(event);
+        } catch (RuntimeException e) {
+            log.error("No se pudo publicar el aviso de estado {} de {} en RabbitMQ; el estado ya quedó guardado",
+                    event.orden().estado(), event.orden().numeroOrden(), e);
         }
     }
 }

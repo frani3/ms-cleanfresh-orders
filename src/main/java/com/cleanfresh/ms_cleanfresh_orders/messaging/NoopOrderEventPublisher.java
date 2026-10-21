@@ -1,6 +1,7 @@
 package com.cleanfresh.ms_cleanfresh_orders.messaging;
 
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
+import com.cleanfresh.ms_cleanfresh_orders.event.OrdenEstadoEvent;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenListaEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,5 +25,10 @@ public class NoopOrderEventPublisher implements OrderEventPublisher {
     @Override
     public void publishLista(OrdenListaEvent event) {
         log.debug("RabbitMQ desactivado: no se publica ORDEN_LISTA de {}", event.orden().numeroOrden());
+    }
+
+    @Override
+    public void publishEstado(OrdenEstadoEvent event) {
+        log.debug("RabbitMQ desactivado: no se publica ORDEN_ESTADO de {}", event.orden().numeroOrden());
     }
 }

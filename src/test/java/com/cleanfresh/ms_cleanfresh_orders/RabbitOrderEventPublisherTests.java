@@ -2,6 +2,7 @@ package com.cleanfresh.ms_cleanfresh_orders;
 
 import com.cleanfresh.ms_cleanfresh_orders.dto.OrderResponse;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
+import com.cleanfresh.ms_cleanfresh_orders.event.OrdenEstadoEvent;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenListaEvent;
 import com.cleanfresh.ms_cleanfresh_orders.messaging.RabbitOrderEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +54,11 @@ class RabbitOrderEventPublisherTests {
                 "Providencia", "cliente@cleanfresh.com");
     }
 
+    private static OrderResponse ordenEnEstado(String servicio, String estado) {
+        return new OrderResponse(7L, "ORD-0007", "64888468-uuid", servicio, estado, "2026-10-15", 15000.0,
+                "Providencia", "cliente@cleanfresh.com");
+    }
+
     private void brokerConfirma(boolean ack, boolean sinBinding) {
         doAnswer(inv -> {
             exchanges.add(inv.getArgument(0));
@@ -90,6 +96,43 @@ class RabbitOrderEventPublisherTests {
 
         assertEquals(List.of("email.send", "invoice.gen"), claves);
         assertEquals(List.of("cmd.direct", "cmd.direct"), exchanges);
+    }
+
+    @Test
+    void unCambioDeEstadoPublicaSoloElAvisoAlClientePorCmdDirect() throws Exception {
+        publisher.publishEstado(new OrdenEstadoEvent(ordenEnEstado("Planchado", "EN_PREPARACION")));
+
+        assertEquals(List.of("email.send"), claves);
+        assertEquals(List.of("cmd.direct"), exchanges);
+        JsonNode json = cuerpo(0);
+        assertEquals("ORDEN_ESTADO", json.get("type").asString());
+        assertEquals("EN_PREPARACION", json.get("payload").get("estado").asString());
+        assertEquals("64888468-uuid", json.get("payload").get("cliente").asString());
+    }
+
+    @Test
+    void elAvisoDeEstadoDeUnaOrdenExpresVaPorCmdTopicConLaVariante() {
+        publisher.publishEstado(new OrdenEstadoEvent(ordenEnEstado("Servicio exprés", "ENTREGADO")));
+
+        assertEquals(List.of("email.send.high"), claves);
+        assertEquals(List.of("cmd.topic"), exchanges);
+    }
+
+    @Test
+    void elPayloadSiempreLlevaElEstadoDeLaOrden() throws Exception {
+        publisher.publishCreada(new OrdenCreadaEvent(orden("Planchado")));
+        publisher.publishLista(new OrdenListaEvent(ordenEnEstado("Planchado", "DESPACHADO")));
+
+        assertEquals("CREADO", cuerpo(0).get("payload").get("estado").asString());
+        assertEquals("DESPACHADO", cuerpo(2).get("payload").get("estado").asString());
+    }
+
+    @Test
+    void siFallaElAvisoDeEstadoSeLanzaElErrorParaQueSeRegistre() {
+        brokerConfirma(false, false);
+
+        assertThrows(IllegalStateException.class,
+                () -> publisher.publishEstado(new OrdenEstadoEvent(ordenEnEstado("Planchado", "CANCELADO"))));
     }
 
     @Test
