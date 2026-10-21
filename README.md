@@ -18,9 +18,10 @@ datos viven en PostgreSQL (en EP1 eran listas en memoria).
 | POST | `/api/orders` | Crea una orden nueva (`{ cliente, servicio, total, sucursal }`) |
 | PUT | `/api/orders/{numeroOrden}/estado` | Cambia el estado (`{ "estado": "DESPACHADO" }`). Acepta `CREADO`, `ACEPTADO`, `EN_PREPARACION`, `DESPACHADO`, `ENTREGADO`, `CANCELADO` (en cualquier mayúscula); otro valor responde `400` y una orden inexistente `404` |
 
-Al crear, `numeroOrden` (`ORD-` + id con 4 dígitos), `id`, `fecha` y
-`estado` (`CREADO`) se generan en el servidor y la orden queda guardada en
-la base: sobrevive a reinicios. Si la tabla está vacía, al arrancar se
+Al crear, `numeroOrden` (`ORD-` + id con 4 dígitos), `id`, `fecha`, `fechaHora` (el instante exacto de creación,
+ISO-8601 en UTC, Spec 036) y `estado` (`CREADO`) se generan en el servidor y la orden queda guardada en
+la base: sobrevive a reinicios. Las órdenes anteriores a la Spec 036 no tienen
+`fechaHora` (viene `null`; solo tienen `fecha`). Si la tabla está vacía, al arrancar se
 cargan las 6 órdenes de ejemplo de EP1.
 
 ## Requisitos
