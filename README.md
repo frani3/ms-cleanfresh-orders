@@ -10,6 +10,8 @@ datos viven en PostgreSQL (en EP1 eran listas en memoria).
 
 ## Endpoints
 
+Documentación OpenAPI (Swagger, Spec 046): `http://localhost:8081/swagger-ui.html` y el contrato en `/v3/api-docs`.
+
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/orders` | Todas las órdenes |
