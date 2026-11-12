@@ -4,6 +4,7 @@ import com.cleanfresh.ms_cleanfresh_orders.dto.OrderRequest;
 import com.cleanfresh.ms_cleanfresh_orders.dto.OrderResponse;
 import com.cleanfresh.ms_cleanfresh_orders.entity.OrderEntity;
 import com.cleanfresh.ms_cleanfresh_orders.repository.OrderJpaRepository;
+import com.cleanfresh.ms_cleanfresh_orders.event.Actor;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenCreadaEvent;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenEstadoEvent;
 import com.cleanfresh.ms_cleanfresh_orders.event.OrdenListaEvent;
@@ -53,6 +54,12 @@ public class OrderService {
 
     @Transactional
     public OrderResponse create(OrderRequest request) {
+        return create(request, Actor.DESCONOCIDO);
+    }
+
+    /** {@code actor} es quien hizo la solicitud (auditoría, Spec 044); sin dato, se toma al cliente de la orden. */
+    @Transactional
+    public OrderResponse create(OrderRequest request, Actor actor) {
         OrderEntity nueva = new OrderEntity(
                 null,
                 request.cliente(),
@@ -73,7 +80,8 @@ public class OrderService {
         order.setNumeroOrden(String.format("ORD-%04d", order.getId()));
         OrderResponse response = toResponse(order);
         // Se publica en RabbitMQ recién cuando la transacción se confirma (ver OrdenEventListener).
-        events.publishEvent(new OrdenCreadaEvent(response));
+        Actor quien = Actor.DESCONOCIDO.equals(actor) ? new Actor(request.cliente(), null) : actor;
+        events.publishEvent(new OrdenCreadaEvent(response, quien));
         return response;
     }
 
@@ -87,6 +95,12 @@ public class OrderService {
      */
     @Transactional
     public Optional<OrderResponse> cambiarEstado(String numeroOrden, String estado) {
+        return cambiarEstado(numeroOrden, estado, Actor.DESCONOCIDO);
+    }
+
+    /** {@code actor} es quien hizo el cambio (auditoría, Spec 044). */
+    @Transactional
+    public Optional<OrderResponse> cambiarEstado(String numeroOrden, String estado, Actor actor) {
         String nuevo = estado == null ? "" : estado.trim().toUpperCase();
         if (!ESTADOS_VALIDOS.contains(nuevo)) {
             throw new IllegalArgumentException("Estado inválido: " + estado);
@@ -96,9 +110,9 @@ public class OrderService {
             order.setEstado(nuevo);
             OrderResponse response = toResponse(order);
             if (cambio && ESTADO_LISTO.equals(nuevo)) {
-                events.publishEvent(new OrdenListaEvent(response));
+                events.publishEvent(new OrdenListaEvent(response, actor));
             } else if (cambio && ESTADOS_CON_AVISO.contains(nuevo)) {
-                events.publishEvent(new OrdenEstadoEvent(response));
+                events.publishEvent(new OrdenEstadoEvent(response, actor));
             }
             return response;
         });

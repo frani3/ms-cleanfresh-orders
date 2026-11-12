@@ -75,6 +75,30 @@ funciona sin RabbitMQ.
 Para probarlo en local, levantar el clúster con `EP2/despliegue/mq/docker-compose.yml` y
 verificar el flujo completo con `EP2/despliegue/mq/verificar-flujo.sh`.
 
+## Eventos de negocio por Kafka (opcional, Spec 044)
+
+Además de los comandos de RabbitMQ, `orders` publica en **Kafka** lo que ya ocurrió, para que `reportes` y `auditoria` lo lean a su ritmo. Va
+apagado por defecto (`KAFKA_ENABLED=false`), igual que RabbitMQ: sin clúster el servicio funciona igual.
+
+| Tópico | Qué se publica | Clave |
+|---|---|---|
+| `orders.events` | Un evento por cada creación o cambio de estado: `OrderCreated`, `OrderAccepted`, `OrderPreparing`, `OrderDispatched`, `OrderDelivered`, `OrderCancelled` | Número de orden (todos los eventos de una orden van a la misma partición y se leen en orden) |
+| `audit.timeline` | Un registro de auditoría por cada evento: quién lo hizo, qué, sobre qué, cuándo y desde qué IP | `orden:<número>:<eventId>` |
+
+- Los mensajes son JSON tipado (`OrderEventMessage` y `AuditEntryMessage`), con las cabeceras `eventId`, `traceId` y `type` visibles en Kafka-UI.
+- **Quién y desde dónde:** el BFF manda las cabeceras `X-Actor` (el `username` del token) y `X-Origen` (la IP del cliente). Sin ellas, el actor es el
+  cliente de la orden (al crearla) o `desconocido`.
+- **No bloquea ni hace fallar la orden:** el envío corre en un hilo aparte (cola acotada de 10.000). Si Kafka no responde, la orden se guarda y
+  responde igual (se comprobó con los 3 brokers apagados: 201 en ~20 ms) y el fallo queda en el log con el número de orden, el tipo y el tópico.
+  Los eventos que no alcanzaron a publicarse no se reintentan después de que vence el plazo del productor (30 s).
+- El productor usa `acks=all` (con `min.insync.replicas=2` en los tópicos), idempotencia, compresión `lz4` y reintentos; se configura en
+  `spring.kafka.producer.*` de `application.yaml`.
+
+| Variable | Para qué | Por defecto |
+|---|---|---|
+| `KAFKA_ENABLED` | Enciende la publicación en Kafka | `false` |
+| `KAFKA_BOOTSTRAP_SERVERS` | Los 3 brokers, separados por coma | `localhost:9092,localhost:9093,localhost:9094` |
+
 ## Levantar en local
 
 Base de datos de prueba con Docker (credenciales de ejemplo, cámbialas):

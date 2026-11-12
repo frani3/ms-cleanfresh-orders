@@ -9,49 +9,58 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.List;
+
 /**
  * Publica los eventos solo después de que el cambio quedó confirmado en la
- * base (así nunca se avisa de algo que terminó revirtiéndose). Si la
- * publicación falla, el cambio ya existe: se registra el error y no se propaga.
+ * base (así nunca se avisa de algo que terminó revirtiéndose). Los publicadores activos son
+ * independientes (RabbitMQ para los comandos, Kafka para los eventos de negocio; Spec 044): si uno falla se registra el
+ * error y se sigue con el siguiente. El cambio ya existe, así que nada se propaga.
  */
 @Component
 public class OrdenEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(OrdenEventListener.class);
 
-    private final OrderEventPublisher publisher;
+    private final List<OrderEventPublisher> publishers;
 
-    public OrdenEventListener(OrderEventPublisher publisher) {
-        this.publisher = publisher;
+    public OrdenEventListener(List<OrderEventPublisher> publishers) {
+        this.publishers = publishers;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrdenCreada(OrdenCreadaEvent event) {
-        try {
-            publisher.publishCreada(event);
-        } catch (RuntimeException e) {
-            log.error("No se pudo publicar los comandos de ORDEN_CREADA de {} en RabbitMQ; la orden ya quedó creada",
-                    event.orden().numeroOrden(), e);
+        for (OrderEventPublisher publisher : publishers) {
+            try {
+                publisher.publishCreada(event);
+            } catch (RuntimeException e) {
+                log.error("{} no pudo publicar ORDEN_CREADA de {}; la orden ya quedó creada",
+                        publisher.getClass().getSimpleName(), event.orden().numeroOrden(), e);
+            }
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrdenLista(OrdenListaEvent event) {
-        try {
-            publisher.publishLista(event);
-        } catch (RuntimeException e) {
-            log.error("No se pudo publicar los comandos de ORDEN_LISTA de {} en RabbitMQ; el estado ya quedó guardado",
-                    event.orden().numeroOrden(), e);
+        for (OrderEventPublisher publisher : publishers) {
+            try {
+                publisher.publishLista(event);
+            } catch (RuntimeException e) {
+                log.error("{} no pudo publicar ORDEN_LISTA de {}; el estado ya quedó guardado",
+                        publisher.getClass().getSimpleName(), event.orden().numeroOrden(), e);
+            }
         }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrdenEstado(OrdenEstadoEvent event) {
-        try {
-            publisher.publishEstado(event);
-        } catch (RuntimeException e) {
-            log.error("No se pudo publicar el aviso de estado {} de {} en RabbitMQ; el estado ya quedó guardado",
-                    event.orden().estado(), event.orden().numeroOrden(), e);
+        for (OrderEventPublisher publisher : publishers) {
+            try {
+                publisher.publishEstado(event);
+            } catch (RuntimeException e) {
+                log.error("{} no pudo publicar el aviso de estado {} de {}; el estado ya quedó guardado",
+                        publisher.getClass().getSimpleName(), event.orden().estado(), event.orden().numeroOrden(), e);
+            }
         }
     }
 }

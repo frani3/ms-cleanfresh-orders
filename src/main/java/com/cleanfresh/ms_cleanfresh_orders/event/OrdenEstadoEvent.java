@@ -6,7 +6,11 @@ import com.cleanfresh.ms_cleanfresh_orders.dto.OrderResponse;
  * Evento interno (Spec 035): una orden cambió de estado a ACEPTADO, EN_PREPARACION, ENTREGADO o CANCELADO.
  * {@code orden.estado()} trae el estado nuevo. El paso a DESPACHADO tiene su propio evento
  * ({@link OrdenListaEvent}, que además genera la boleta). Lo publica OrderService y lo recoge
- * OrdenEventListener una vez confirmada la transacción.
+ * OrdenEventListener una vez confirmada la transacción. {@code actor} es quien hizo el cambio (auditoría, Spec 044).
  */
-public record OrdenEstadoEvent(OrderResponse orden) {
+public record OrdenEstadoEvent(OrderResponse orden, Actor actor) {
+
+    public OrdenEstadoEvent(OrderResponse orden) {
+        this(orden, Actor.DESCONOCIDO);
+    }
 }

@@ -10,6 +10,28 @@ spring:
     publisher-returns: true
     template:
       mandatory: true
+  # Cliente Kafka (Spec 044). KAFKA_BOOTSTRAP_SERVERS lista los 3 brokers, así el productor sigue funcionando si cae uno.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    client-id: ms-cleanfresh-orders
+    producer:
+      # acks=all con min.insync.replicas=2 en los tópicos: un evento confirmado está en al menos 2 brokers.
+      acks: all
+      retries: 5
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      compression-type: lz4
+      properties:
+        # Sin duplicados ni desorden aunque el productor reintente.
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        linger.ms: 5
+        # Si Kafka no responde, falla pronto y se registra (el envío corre en un hilo aparte): no se espera 60 s por defecto.
+        request.timeout.ms: 10000
+        delivery.timeout.ms: 30000
+        max.block.ms: 5000
+        # Los consumidores (reportes, auditoria) tienen su propio DTO: no se envía el nombre de la clase de este servicio.
+        spring.json.add.type.headers: false
   application:
     name: ms-cleanfresh-orders
   # Sin valores por defecto a propósito: la conexión llega solo por
@@ -29,3 +51,10 @@ spring:
 app:
   rabbit:
     enabled: ${RABBIT_ENABLED:false}
+  # Eventos de negocio y auditoría con Kafka (Spec 044): orders publica cada creación o cambio de estado en orders.events y su
+  # registro de auditoría en audit.timeline. Apagado por defecto, como RabbitMQ. Los nombres de los tópicos se pueden cambiar acá.
+  kafka:
+    enabled: ${KAFKA_ENABLED:false}
+    topics:
+      orders-events: orders.events
+      audit-timeline: audit.timeline
